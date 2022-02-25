@@ -23,7 +23,7 @@ public class ThreadsArrayUtil {
     }
 
     public static void setSleepTime(int position, int sleepTime) {
-        int setByPosition = position;
+        int setByPosition = position + 1;
         if (position == (nThreads) - 1) {
             setByPosition = 0;
         }
