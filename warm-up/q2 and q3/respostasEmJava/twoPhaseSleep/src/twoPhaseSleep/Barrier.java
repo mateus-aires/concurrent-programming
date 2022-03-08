@@ -17,7 +17,6 @@ public class Barrier {
         mutex = new Semaphore(1);
         firstGate = new Semaphore(0);
         secondGate = new Semaphore(1);
-
     }
 
     public void build() {

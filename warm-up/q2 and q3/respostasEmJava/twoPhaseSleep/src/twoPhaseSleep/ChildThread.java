@@ -20,13 +20,13 @@ public class ChildThread extends Thread {
         System.out.printf("[%d] Sleeping for %d seconds\n", this.position, firstSleepTime);
 
         this.takeANap(firstSleepTime * 1000, true);
-        ThreadsArrayUtil.setSleepTime(this.position, this.drawNumber());
+        Main.setSleepTime(this.position, this.drawNumber());
 
         barrier.build();
 
-        System.out.print(ThreadsArrayUtil.getSecondSleepTimesString(this.position));
+        System.out.print(Main.getSecondSleepTimesString(this.position));
 
-        int secondSleepTime = ThreadsArrayUtil.getSleepTime(this.position);
+        int secondSleepTime = Main.getSleepTime(this.position);
         this.takeANap(secondSleepTime * 1000, false);
     }
 
