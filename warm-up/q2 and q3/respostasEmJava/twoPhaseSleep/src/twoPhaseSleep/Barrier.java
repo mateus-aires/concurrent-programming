@@ -2,7 +2,7 @@ package twoPhaseSleep;
 
 import java.util.concurrent.Semaphore;
 
-public class Barrier implements Runnable {
+public class Barrier {
 
     private static int nThreads;
 
@@ -54,8 +54,4 @@ public class Barrier implements Runnable {
         secondGate.release();
     }
 
-    @Override
-    public void run() {
-        build();
-    }
 }

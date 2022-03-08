@@ -22,7 +22,7 @@ public class ChildThread extends Thread {
         this.takeANap(firstSleepTime * 1000, true);
         ThreadsArrayUtil.setSleepTime(this.position, this.drawNumber());
 
-        barrier.run();
+        barrier.build();
 
         System.out.print(ThreadsArrayUtil.getSecondSleepTimesString(this.position));
 
