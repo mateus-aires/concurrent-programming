@@ -14,20 +14,20 @@ import (
 )
 
 func main() {
-	var threads_to_create int
+	var goroutines_to_create int
 
 	fmt.Print("n: ")
-	fmt.Scanf("%d", &threads_to_create)
+	fmt.Scanf("%d", &goroutines_to_create)
 	ch := make(chan bool)
 
-	for i := 0; i < threads_to_create; i++ {
+	for i := 0; i < goroutines_to_create; i++ {
 		go random_sleep(i, ch)
 	}
 
-	for i := 0; i < threads_to_create; i++ {
+	for i := 0; i < goroutines_to_create; i++ {
 		<-ch
 	}
-	fmt.Printf("%d\n", threads_to_create)
+	fmt.Printf("%d\n", goroutines_to_create)
 }
 
 func random_sleep(thread_id int, done chan bool) {
