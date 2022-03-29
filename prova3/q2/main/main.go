@@ -20,71 +20,82 @@ import (
 
 // https://gobyexample.com/waitgroups
 func main() {
-	var goroutines_to_create int
+	var goRoutinesToCreate int
 	fmt.Print("n: ")
-	fmt.Scanf("%d", &goroutines_to_create)
+	fmt.Scanf("%d", &goRoutinesToCreate)
 
-	var first_phase_wg sync.WaitGroup
-	var second_phase_wg sync.WaitGroup
+	var firstPhaseWg sync.WaitGroup
+	var secondPhaseWg sync.WaitGroup
+	firstPhaseWg.Add(goRoutinesToCreate)
+	secondPhaseWg.Add(goRoutinesToCreate)
 
-	first_phase_wg.Add(goroutines_to_create)
-	second_phase_wg.Add(goroutines_to_create)
+	var channels = make([]chan int, goRoutinesToCreate)
 
-	var channels = make([]chan int, goroutines_to_create)
-	for i := 0; i < goroutines_to_create; i++ {
+	for i := 0; i < goRoutinesToCreate; i++ {
 		channels[i] = make(chan int)
 	}
 
-	for i := 0; i < goroutines_to_create; i++ {
-		var previous_index int
-		var previous chan int
-		next := channels[i]
-		if i == 0 {
-			previous_index = len(channels) - 1
-		} else {
-			previous_index = i - 1
-		}
-
-		fmt.Printf("i: %d, previous: %d\n", i, previous_index)
-		previous = channels[previous_index]
+	for i := 0; i < goRoutinesToCreate; i++ {
+		nextIndex := getNextIndex(i, goRoutinesToCreate)
+		nextCh := channels[nextIndex]
 		go func(thread_id int) {
-			two_phase_sleep(thread_id, previous, next, &first_phase_wg, &second_phase_wg)
+			first_phase(thread_id, nextCh, &firstPhaseWg, goRoutinesToCreate)
 		}(i)
 	}
 
-	second_phase_wg.Wait()
-	fmt.Printf("%d\n", goroutines_to_create)
+	var secondSleepTimes = make([]int, goRoutinesToCreate)
+
+	for i := 0; i < goRoutinesToCreate; i++ {
+		ch := channels[i]
+		secondSleepTimes[i] = <-ch
+		close(ch)
+	}
+
+	firstPhaseWg.Wait()
+
+	fmt.Print("End of first phase.\n")
+
+	for i := 0; i < goRoutinesToCreate; i++ {
+		go func(threadId int) {
+			second_phase(threadId, secondSleepTimes[threadId], &secondPhaseWg)
+		}(i)
+	}
+	secondPhaseWg.Wait()
+
+	// second_phase_wg.Wait()
+	fmt.Print("Finished.")
 }
 
-func two_phase_sleep(thread_id int, previous chan int, next chan int, first_wg *sync.WaitGroup, second_wg *sync.WaitGroup) {
-	first_phase(thread_id, next, first_wg)
-	first_wg.Wait()
-
-	second_phase(thread_id, previous, second_wg)
-
-}
-
-func first_phase(thread_id int, next chan int, first_wg *sync.WaitGroup) {
-	defer first_wg.Done()
+func first_phase(threadId int, next chan int, firstWg *sync.WaitGroup, totalRoutines int) {
+	defer firstWg.Done()
 
 	rand.Seed(time.Now().UnixNano())
-	sleep_time := rand.Intn(5)
+	sleepTime := rand.Intn(5)
 
-	fmt.Printf("[#%d] First sleep %d seconds\n", thread_id, sleep_time)
-	time.Sleep(time.Duration(sleep_time) * time.Second)
-	fmt.Printf("[#%d] First sleep finished\n", thread_id)
+	fmt.Printf("[#%d] First sleep %d seconds\n", threadId, sleepTime)
+	time.Sleep(time.Duration(sleepTime) * time.Second)
+	fmt.Printf("[#%d] First sleep finished\n", threadId)
 
 	n := rand.Intn(10)
-	fmt.Printf("[#%d] Number drawn: %d\n", thread_id, n)
+	nextIndex := getNextIndex(threadId, totalRoutines)
+	fmt.Printf("[#%d] Routine #%d will sleep for %d seconds.\n", threadId, nextIndex, n)
 	next <- n
 }
 
-func second_phase(thread_id int, previous chan int, second_wg *sync.WaitGroup) {
+func second_phase(thread_id int, sleepTime int, second_wg *sync.WaitGroup) {
 	defer second_wg.Done()
 
-	sleep_time := <-previous
-
-	fmt.Printf("[#%d] Second sleep %d seconds\n", thread_id, sleep_time)
-	time.Sleep(time.Duration(sleep_time) * time.Second)
+	fmt.Printf("[#%d] Second sleep %d seconds\n", thread_id, sleepTime)
+	time.Sleep(time.Duration(sleepTime) * time.Second)
 	fmt.Printf("[#%d] Second sleep finished\n", thread_id)
+}
+
+func getNextIndex(i int, total int) int {
+	nextIndex := 0
+	if i == (total - 1) {
+		nextIndex = 0
+	} else {
+		nextIndex = i + 1
+	}
+	return nextIndex
 }
