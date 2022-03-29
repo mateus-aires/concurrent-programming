@@ -24,10 +24,6 @@ func main() {
 	fmt.Print("n: ")
 	fmt.Scanf("%d", &goroutinesToCreate)
 
-	//makes goroutines wait until all goroutines finished first phase
-	var firstPhaseWG sync.WaitGroup
-	firstPhaseWG.Add(1)
-
 	//makes main goroutine wait until all created goroutines finished
 	var secondPhaseWG sync.WaitGroup
 	secondPhaseWG.Add(goroutinesToCreate)
@@ -39,7 +35,7 @@ func main() {
 
 	for i := 0; i < goroutinesToCreate; i++ {
 		go func(goRoutineID int) {
-			twoPhaseSleep(goRoutineID, channels[goRoutineID], &firstPhaseWG, &secondPhaseWG)
+			twoPhaseSleep(goRoutineID, channels[goRoutineID], &secondPhaseWG)
 		}(i)
 	}
 
@@ -49,7 +45,6 @@ func main() {
 		secondSleepTimes[i] = <-channels[i]
 	}
 	fmt.Printf("[Main goroutine] Second phase sleep times: %v\n", secondSleepTimes)
-	firstPhaseWG.Done()
 
 	// Send value drawn by the n - 1 goroutine
 	for i := 0; i < goroutinesToCreate; i++ {
@@ -61,12 +56,12 @@ func main() {
 	fmt.Printf("[Main goroutine] n: %d\n", goroutinesToCreate)
 }
 
-func twoPhaseSleep(id int, ch chan int, firstWG *sync.WaitGroup, secondWG *sync.WaitGroup) {
-	firstPhase(id, ch, firstWG)
+func twoPhaseSleep(id int, ch chan int, secondWG *sync.WaitGroup) {
+	firstPhase(id, ch)
 	secondPhase(id, ch, secondWG)
 }
 
-func firstPhase(id int, ch chan int, firstWG *sync.WaitGroup) {
+func firstPhase(id int, ch chan int) {
 	rand.Seed(time.Now().UnixNano())
 	sleepTime := rand.Intn(5)
 
@@ -75,7 +70,6 @@ func firstPhase(id int, ch chan int, firstWG *sync.WaitGroup) {
 	fmt.Printf("[#%d] First sleep finished\n", id)
 
 	ch <- rand.Intn(10)
-	firstWG.Wait()
 }
 
 func secondPhase(id int, ch chan int, second_wg *sync.WaitGroup) {
