@@ -20,82 +20,78 @@ import (
 
 // https://gobyexample.com/waitgroups
 func main() {
-	var goRoutinesToCreate int
+	var goroutinesToCreate int
 	fmt.Print("n: ")
-	fmt.Scanf("%d", &goRoutinesToCreate)
+	fmt.Scanf("%d", &goroutinesToCreate)
 
-	var firstPhaseWg sync.WaitGroup
-	var secondPhaseWg sync.WaitGroup
-	firstPhaseWg.Add(goRoutinesToCreate)
-	secondPhaseWg.Add(goRoutinesToCreate)
+	//makes goroutines wait until all goroutines finished first phase
+	var firstPhaseWG sync.WaitGroup
+	firstPhaseWG.Add(1)
 
-	var channels = make([]chan int, goRoutinesToCreate)
+	//makes main goroutine wait until all created goroutines finished
+	var secondPhaseWG sync.WaitGroup
+	secondPhaseWG.Add(goroutinesToCreate)
 
-	for i := 0; i < goRoutinesToCreate; i++ {
+	var channels = make([]chan int, goroutinesToCreate)
+	for i := 0; i < goroutinesToCreate; i++ {
 		channels[i] = make(chan int)
 	}
 
-	for i := 0; i < goRoutinesToCreate; i++ {
-		nextIndex := getNextIndex(i, goRoutinesToCreate)
-		nextCh := channels[nextIndex]
-		go func(thread_id int) {
-			first_phase(thread_id, nextCh, &firstPhaseWg, goRoutinesToCreate)
+	for i := 0; i < goroutinesToCreate; i++ {
+		go func(goRoutineID int) {
+			twoPhaseSleep(goRoutineID, channels[goRoutineID], &firstPhaseWG, &secondPhaseWG)
 		}(i)
 	}
 
-	var secondSleepTimes = make([]int, goRoutinesToCreate)
+	// Get values for the second phase sleep
+	var secondSleepTimes = make([]int, goroutinesToCreate)
+	for i := 0; i < goroutinesToCreate; i++ {
+		secondSleepTimes[i] = <-channels[i]
+	}
+	fmt.Printf("[Main goroutine] Second phase sleep times: %v\n", secondSleepTimes)
+	firstPhaseWG.Done()
 
-	for i := 0; i < goRoutinesToCreate; i++ {
-		ch := channels[i]
-		secondSleepTimes[i] = <-ch
-		close(ch)
+	// Send value drawn by the n - 1 goroutine
+	for i := 0; i < goroutinesToCreate; i++ {
+		sleepTimeIndex := getSecondPhaseSleepTimeIndex(i, goroutinesToCreate)
+		channels[i] <- secondSleepTimes[sleepTimeIndex]
 	}
 
-	firstPhaseWg.Wait()
-
-	fmt.Print("End of first phase.\n")
-
-	for i := 0; i < goRoutinesToCreate; i++ {
-		go func(threadId int) {
-			second_phase(threadId, secondSleepTimes[threadId], &secondPhaseWg)
-		}(i)
-	}
-	secondPhaseWg.Wait()
-
-	// second_phase_wg.Wait()
-	fmt.Print("Finished.")
+	secondPhaseWG.Wait()
+	fmt.Printf("[Main goroutine] n: %d\n", goroutinesToCreate)
 }
 
-func first_phase(threadId int, next chan int, firstWg *sync.WaitGroup, totalRoutines int) {
-	defer firstWg.Done()
+func twoPhaseSleep(id int, ch chan int, firstWG *sync.WaitGroup, secondWG *sync.WaitGroup) {
+	firstPhase(id, ch, firstWG)
+	secondPhase(id, ch, secondWG)
+}
 
+func firstPhase(id int, ch chan int, firstWG *sync.WaitGroup) {
 	rand.Seed(time.Now().UnixNano())
 	sleepTime := rand.Intn(5)
 
-	fmt.Printf("[#%d] First sleep %d seconds\n", threadId, sleepTime)
+	fmt.Printf("[#%d] First sleep %d seconds\n", id, sleepTime)
 	time.Sleep(time.Duration(sleepTime) * time.Second)
-	fmt.Printf("[#%d] First sleep finished\n", threadId)
+	fmt.Printf("[#%d] First sleep finished\n", id)
 
-	n := rand.Intn(10)
-	nextIndex := getNextIndex(threadId, totalRoutines)
-	fmt.Printf("[#%d] Routine #%d will sleep for %d seconds.\n", threadId, nextIndex, n)
-	next <- n
+	ch <- rand.Intn(10)
+	firstWG.Wait()
 }
 
-func second_phase(thread_id int, sleepTime int, second_wg *sync.WaitGroup) {
+func secondPhase(id int, ch chan int, second_wg *sync.WaitGroup) {
 	defer second_wg.Done()
-
-	fmt.Printf("[#%d] Second sleep %d seconds\n", thread_id, sleepTime)
+	sleepTime := <-ch
+	fmt.Printf("[#%d] Second sleep %d seconds\n", id, sleepTime)
 	time.Sleep(time.Duration(sleepTime) * time.Second)
-	fmt.Printf("[#%d] Second sleep finished\n", thread_id)
+	fmt.Printf("[#%d] Second sleep finished\n", id)
 }
 
-func getNextIndex(i int, total int) int {
-	nextIndex := 0
-	if i == (total - 1) {
-		nextIndex = 0
+func getSecondPhaseSleepTimeIndex(goroutineID int, goroutinesCreated int) int {
+	var index int
+	if goroutineID == 0 {
+		index = goroutinesCreated - 1
 	} else {
-		nextIndex = i + 1
+		index = goroutineID - 1
 	}
-	return nextIndex
+	return index
 }
