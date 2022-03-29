@@ -13,10 +13,10 @@ sendo par.
 */
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
-	"bufio"
 )
 
 func main() {
@@ -25,16 +25,15 @@ func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Scan()
 	path := scanner.Text()
-	
+
 	directory := make(chan string)
 	join := make(chan int)
 
 	go navigate(directory, path)
 	go readFile(directory, join)
 
-	<- join
+	<-join
 }
-
 
 func navigate(ch chan<- string, root string) {
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
@@ -50,7 +49,6 @@ func navigate(ch chan<- string, root string) {
 	close(ch)
 }
 
-
 func readFile(ch <-chan string, join_ch chan<- int) {
 	for file := range ch {
 		f, err := os.Open(file)
@@ -64,7 +62,10 @@ func readFile(ch <-chan string, join_ch chan<- int) {
 		if err != nil {
 			fmt.Println(err)
 		}
-		fmt.Printf("First byte: %c\n", data)
+
+		if data%2 == 0 {
+			fmt.Printf("File: %s | First byte: %c | First Byte Value: %v\n", file, data, data)
+		}
 
 		f.Close()
 	}
