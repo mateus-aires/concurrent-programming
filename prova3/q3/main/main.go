@@ -20,11 +20,12 @@ import (
 )
 
 func main() {
-	var path string
 	fmt.Print("Absolute path: ")
-	fmt.Scanf("%s", &path)
-	fmt.Println(path)
 
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Scan()
+	path := scanner.Text()
+	
 	directory := make(chan string)
 	join := make(chan int)
 
@@ -38,7 +39,6 @@ func main() {
 func navigate(ch chan<- string, root string) {
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if !info.IsDir() {
-			// ch <- info.Name()
 			ch <- path
 		}
 
@@ -53,8 +53,6 @@ func navigate(ch chan<- string, root string) {
 
 func readFile(ch <-chan string, join_ch chan<- int) {
 	for file := range ch {
-		// fmt.Println("File path: ", file)
-
 		f, err := os.Open(file)
 		if err != nil {
 			fmt.Println(err)
